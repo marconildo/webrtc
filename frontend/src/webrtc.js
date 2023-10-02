@@ -8,6 +8,7 @@ const ICE_SERVERS = [
 const USE_AUDIO = true;
 const USE_VIDEO = true;
 
+const gapBetweenTiles = 5;
 let signalingSocket = null; /* our socket.io connection to our webserver */
 let localMediaStream = null; /* our own microphone / webcam */
 let peers = {}; /* keep track of our peer connections, indexed by peer_id (aka socket.io id) */
@@ -65,7 +66,7 @@ const setupLocalMedia = (peerId, name, callback, errorback) => {
 			localMediaStream = stream;
 			const localMedia = getVideoElement(peerId, name, true);
 			attachMediaStream(localMedia, stream);
-
+			resizeVideos();
 			if (callback) callback();
 		})
 		.catch(() => {
@@ -80,6 +81,11 @@ const joinChatChannel = (channel, userData) => {
 }
 
 const resizeVideos = () => {
+	const videos = document.querySelectorAll("#videos .video");
+	const elementsInARowCount = Math.ceil(Math.sqrt(videos.length));
+	// videos.forEach((element) => {
+  //   element.style.width = `calc(calc(50% / ${elementsInARowCount}) - ${gapBetweenTiles}px)`;
+  // });
 }
 
 const initiateCall = (name, roomId) => {
@@ -164,7 +170,7 @@ const initiateCall = (name, roomId) => {
 			const remoteMedia = getVideoElement(peer_id);
 			peerMediaElements[peer_id] = remoteMedia;
 			attachMediaStream(remoteMedia, event.stream);
-			// resizeVideos();
+			resizeVideos();
 
 			for (let peerId in channel) {
 				const videoPeerName = document.getElementById(peerId + "_videoPeerName");

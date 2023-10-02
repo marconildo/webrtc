@@ -87,7 +87,7 @@ const signallingServer = (socket) => {
 	};
 	
 	socket.on("relayICECandidate", (config) => {
-		console.log("relayICECandidate", config);
+		// console.log("relayICECandidate", config);
 		let peer_id = config.peer_id;
 		let ice_candidate = config.ice_candidate;
 		console.log("[" + socket.id + "] relay ICE-candidate to [" + peer_id + "] ", ice_candidate);
