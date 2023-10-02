@@ -1,5 +1,6 @@
 import IO from 'socket.io-client';
 import promise from './socket.io-promise';
+import Chromatism from 'chromatism';
 
 const ICE_SERVERS = [
 	{ urls: "stun:stun.l.google.com:19302" },
@@ -8,7 +9,8 @@ const ICE_SERVERS = [
 const USE_AUDIO = true;
 const USE_VIDEO = true;
 
-const gapBetweenTiles = 5;
+// const gapBetweenTiles = 5;
+let peerId = null;
 let signalingSocket = null; /* our socket.io connection to our webserver */
 let localMediaStream = null; /* our own microphone / webcam */
 let peers = {}; /* keep track of our peer connections, indexed by peer_id (aka socket.io id) */
@@ -16,9 +18,78 @@ let channel = {}; /* keep track of the peers Info in the channel, indexed by pee
 let peerMediaElements = {}; /* keep track of our <video>/<audio> tags, indexed by peer_id */
 let dataChannels = {};
 
+const generateInitials = (
+  name,
+  size = 2,
+  keepCase = false,
+  allowSpecialCharacters = false
+) => {
+  let nameOrInitials = name.trim();
+
+  if (!keepCase) {
+    nameOrInitials = nameOrInitials.toUpperCase();
+  }
+
+  if (!allowSpecialCharacters) {
+    nameOrInitials = nameOrInitials.replace(/[!@#$%^&*(),.?":{}|<>_]/g, "");
+  }
+  nameOrInitials = nameOrInitials.trim().trim("-");
+  let names = nameOrInitials.split(" ");
+
+  names = names.map(function (namePart) {
+    return namePart.split("-");
+  });
+  let realNames = [];
+  for (let namePart of names.flat()) {
+    realNames.push(namePart);
+  }
+  names = realNames;
+
+  let initials = nameOrInitials;
+  let assignedNames = 0;
+  if (names.length > 1) {
+    initials = "";
+    let start = 0;
+    for (let i = 0; i < size; i++) {
+      let index = i;
+      if ((index === size - 1 && index > 0) || index > names.length - 1) {
+        index = names.length - 1;
+      }
+      if (assignedNames >= names.length) {
+        start++;
+      }
+      initials += names[index].substr(start, 1);
+      assignedNames++;
+    }
+  }
+  initials = initials.substr(0, size);
+  return initials;
+}
+
+const drawCircle = (text, size, color) => {
+  var textSize = Math.ceil(size / 2.5);
+  var font = 'Proxima Nova, proxima-nova, HelveticaNeue-Light, Helvetica Neue Light, Helvetica Neue, Helvetica, Arial, Lucida Grande, sans-serif';
+  var colors = ["#1abc9c", "#16a085", "#f1c40f", "#f39c12", "#2ecc71", "#27ae60", "#e67e22", "#d35400", "#3498db", "#2980b9", "#e74c3c", "#c0392b", "#9b59b6", "#8e44ad", "#bdc3c7", "#34495e", "#2c3e50", "#95a5a6", "#7f8c8d", "#ec87bf", "#d870ad", "#f69785", "#9ba37e", "#b49255", "#b49255", "#a94136"];
+  var colorIndex = Math.floor((text.charCodeAt(0) - 65) % colors.length);
+	var finalColor = color || colors[colorIndex];
+
+	// const size = options.size || 128
+  // const background = options.background || '#'+Math.floor(Math.random()*16777215).toString(16)
+  // const { hex: foreground } = Chromatism.contrastRatio(background)
+  
+  var template = [
+    '<svg height="' + size + '" width="' + size + '">',
+    '<circle fill="' + finalColor +'" width="' + size + '" height="' + size + '" cx="' + size / 2 + '" cy="' + size / 2 + '" r="' + size /2 + '"/>',
+  	'<text text-anchor="middle" x="50%" y="50%" dy="0.35em" fill="white" font-size="' + textSize + '" font-family="' + font + '">' + generateInitials(text) + '</text>',
+    '</svg>'
+  ];
+  
+  return template.join('');
+}
+
 const attachMediaStream = (element, stream) => (element.srcObject = stream);
 
-const getVideoElement = (peerId, name, isLocal) => {
+const getVideoElement = (name, isLocal) => {
 	const videoWrap = document.createElement("div");
 	videoWrap.className = "video";
 	const media = document.createElement("video");
@@ -46,6 +117,8 @@ const getVideoElement = (peerId, name, isLocal) => {
 		peerNameEle.innerHTML = "Unnamed";
 	}
 
+	const videoAvatarImg = document.createElement("div");
+
 	videoWrap.setAttribute("id", peerId);
 	videoWrap.appendChild(media);
 	videoWrap.appendChild(audioEnabled);
@@ -54,7 +127,7 @@ const getVideoElement = (peerId, name, isLocal) => {
 	return media;
 }
 
-const setupLocalMedia = (peerId, name, callback, errorback) => {
+const setupLocalMedia = (name, callback, errorback) => {
 	if (localMediaStream != null) {
 		if (callback) callback();
 		return;
@@ -64,7 +137,7 @@ const setupLocalMedia = (peerId, name, callback, errorback) => {
 		.getUserMedia({ audio: USE_AUDIO, video: USE_VIDEO })
 		.then((stream) => {
 			localMediaStream = stream;
-			const localMedia = getVideoElement(peerId, name, true);
+			const localMedia = getVideoElement(name, true);
 			attachMediaStream(localMedia, stream);
 			resizeVideos();
 			if (callback) callback();
@@ -105,7 +178,7 @@ const initiateCall = (name, roomId) => {
 	signalingSocket.request = promise(signalingSocket);
 	
 	signalingSocket.on("connect", () => {
-		const peerId = signalingSocket.id;
+		peerId = signalingSocket.id;
 		console.log("peerId: " + peerId);
 		if(!peerId) return;
 
@@ -122,7 +195,7 @@ const initiateCall = (name, roomId) => {
 
 		if (localMediaStream) joinChatChannel(roomId, userData);
 		else
-			setupLocalMedia(peerId, name, function () {
+			setupLocalMedia(name, function () {
 				joinChatChannel(roomId, userData);
 			});
 	});
@@ -294,5 +367,7 @@ const initiateCall = (name, roomId) => {
 }
 
 export {
-  initiateCall
+  initiateCall,
+	localMediaStream,
+	peerId
 }

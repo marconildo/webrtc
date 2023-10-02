@@ -1,6 +1,6 @@
 import { Routes, Route } from "react-router-dom";
 import MainPage from "./MainPage";
-import Room from "./Room";
+import Room from "./components/Room";
 
 function App() {
   return (
