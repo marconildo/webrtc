@@ -1,5 +1,5 @@
 import IO from 'socket.io-client';
-
+import promise from './socket.io-promise';
 
 const ICE_SERVERS = [
 	{ urls: "stun:stun.l.google.com:19302" },
@@ -102,6 +102,7 @@ const initiateCall = (name, roomId) => {
 
   const roomLink = `${import.meta.env.VITE_BACKEND_URL}/`;
 	signalingSocket = IO(roomLink);
+	signalingSocket.request = promise(signalingSocket);
 	
 	signalingSocket.on("connect", () => {
 		const peerId = signalingSocket.id;

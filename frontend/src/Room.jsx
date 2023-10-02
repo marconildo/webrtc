@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   initiateCall
-} from "./webrtc"
+} from "./lib/webrtc"
 import "./Room.css";
 
 const Room = () => {
