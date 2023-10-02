@@ -4,6 +4,7 @@ import {
   initiateCall
 } from "./lib/webrtc"
 import "./Room.css";
+import RoomActions from './RoomActions';
 
 const Room = () => {
   let { room } = useParams();
@@ -28,6 +29,7 @@ const Room = () => {
 
   return <>
     <section id="videos" />
+    <RoomActions />
   </>;
 }
 

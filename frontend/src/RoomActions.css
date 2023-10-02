@@ -1,0 +1,49 @@
+#actionsWrap {
+	position: fixed;
+	bottom: 1rem;
+	left: 0px;
+	right: 0px;
+	z-index: 100;
+	display: inline-flex;
+	transition: all 0.25s ease-out;
+	opacity: 1;
+	transform: translateY(0rem);
+}
+#actionsWrap.hidden {
+	opacity: 0;
+	transform: translateY(1rem);
+	z-index: -1;
+}
+#actions {
+	z-index: 100;
+	background: rgba(255, 255, 255, 0.9);
+	box-shadow: 0px 5px 15px rgba(0, 0, 0, 0.16), 0px 1px 4px rgba(0, 0, 0, 0.16);
+	margin: auto;
+	box-sizing: border-box;
+	border-radius: 1rem;
+	transition: opacity 250ms;
+}
+#actions button {
+	flex: 1;
+	background: none;
+	border: none;
+	font-size: 1.25rem;
+	padding: 1rem;
+	cursor: pointer;
+	margin: auto;
+	color: #000000;
+}
+#actions button:hover {
+	background: rgba(255, 255, 255, 1);
+	color: #000000;
+	border-radius: 1rem;
+}
+#actions button.active {
+	background: #fafafa;
+	border-radius: 1rem;
+}
+#actions button.icon-exit,
+#actions button.icon-mic-off,
+#actions button.icon-video-off {
+	color: #e74c3c !important;
+}
