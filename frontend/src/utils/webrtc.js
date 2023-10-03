@@ -1,5 +1,6 @@
 import IO from 'socket.io-client';
 import promise from './socket.io-promise';
+import { resizeVideos } from './videoGrid';
 
 const ICE_SERVERS = [
 	{ urls: "stun:stun.l.google.com:19302" },
@@ -11,6 +12,7 @@ const USE_VIDEO = true;
 // const gapBetweenTiles = 5;
 let peerId = null;
 let currentName = null;
+let currentRoomId = null;
 let signalingSocket = null; /* our socket.io connection to our webserver */
 let localMediaStream = null; /* our own microphone / webcam */
 let peers = {}; /* keep track of our peer connections, indexed by peer_id (aka socket.io id) */
@@ -153,12 +155,14 @@ const joinChatChannel = (channel, userData) => {
   signalingSocket.emit("join", { channel: channel, userData: userData });
 }
 
-const resizeVideos = () => {
-	const videos = document.querySelectorAll("#videos .video");
-	const elementsInARowCount = Math.ceil(Math.sqrt(videos.length));
-	// videos.forEach((element) => {
-  //   element.style.width = `calc(calc(50% / ${elementsInARowCount}) - ${gapBetweenTiles}px)`;
-  // });
+const updateUserDataChannel = (dataMessage) => {
+	if (dataMessage.type === "chat") return;
+	signalingSocket.emit("updateUserData", { 
+		channel: currentRoomId,
+		key: dataMessage.type, 
+		value: dataMessage.message 
+	});
+  Object.keys(dataChannels).map((peer_id) => dataChannels[peer_id].send(JSON.stringify(dataMessage)));
 }
 
 const handleIncomingDataChannelMessage = (dataMessage) => {
@@ -188,6 +192,7 @@ const handleIncomingDataChannelMessage = (dataMessage) => {
 
 const initiateCall = (name, roomId) => {
 	currentName = name;
+	currentRoomId = roomId;
   const userAgent = navigator.userAgent;
 	const isMobileDevice = !!/Android|webOS|iPhone|iPad|iPod|BB10|BlackBerry|IEMobile|Opera Mini|Mobile|mobile/i.test(
 		userAgent.toUpperCase() || ""
@@ -275,7 +280,6 @@ const initiateCall = (name, roomId) => {
 			for (let peer in channel) {
 				const videoPeerName = document.getElementById(peer + "_videoPeerName");
 				const peerName = channel[peer]["userData"]["peerName"];
-				console.log("peerName", peer + peerName)
 				console.log("videoEnabled", channel[peer]["userData"]["videoEnabled"])
 				if (videoPeerName && peerName) {
 					videoPeerName.innerHTML = peerName;
@@ -397,8 +401,8 @@ const initiateCall = (name, roomId) => {
 
 export {
   initiateCall,
-	localMediaStream,
-	peerId,
+	updateUserDataChannel,
 	currentName,
-	dataChannels
+	localMediaStream,
+	peerId
 }

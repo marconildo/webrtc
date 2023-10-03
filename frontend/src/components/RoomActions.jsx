@@ -3,10 +3,10 @@ import "./RoomActions.css";
 import RoomContext from "../context/RoomContext";
 import {
   localMediaStream
-} from "../lib/webrtc"
+} from "../utils/webrtc"
 import {
   updateUserData
-} from "../lib/actions"
+} from "../utils/actions"
 
 const RoomActions = () => {
   const { 

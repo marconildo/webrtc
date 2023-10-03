@@ -1,4 +1,8 @@
-import { currentName, peerId, dataChannels } from "./webrtc"
+import { 
+  updateUserDataChannel,
+  currentName,
+  peerId
+} from "./webrtc"
 
 const updateUserData = (key, value) => {
   sendDataMessage(key, value);
@@ -28,16 +32,7 @@ const sendDataMessage = (key, value) => {
     date: new Date().toISOString(),
   };
 
-  switch (key) {
-    case "chat":
-      // chats.push(dataMessage);
-      // this.$nextTick(this.scrollToBottom);
-      break;
-    default:
-      break;
-  }
-
-  Object.keys(dataChannels).map((peer_id) => dataChannels[peer_id].send(JSON.stringify(dataMessage)));
+  updateUserDataChannel(dataMessage);
 }
 
 export {

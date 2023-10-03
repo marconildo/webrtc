@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import RoomContext from '../context/RoomContext';
 import {
   initiateCall
-} from "../lib/webrtc"
+} from "../utils/webrtc"
 import "./Room.css";
 import RoomActions from './RoomActions';
 
