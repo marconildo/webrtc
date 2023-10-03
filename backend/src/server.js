@@ -63,7 +63,7 @@ const signallingServer = (socket) => {
 				peers[channel][id]["userData"][key] = value;
 			}
 		}
-		console.log("[" + socket.id + "] updateUserData", util.inspect(peers[channel][socket.id], options));
+		// console.log("[" + socket.id + "] updateUserData", util.inspect(peers[channel][socket.id], options));
 	});
 
 	const part = (channel) => {
