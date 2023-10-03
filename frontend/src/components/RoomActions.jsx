@@ -12,7 +12,7 @@ const RoomActions = () => {
   const { 
     audioEnabled, setAudioEnabled,
     videoEnabled, setVideoEnabled,
-    showChat, setShowChat
+    // showChat, setShowChat
   } = useContext(RoomContext);
 
   const audioToggle = (e) => {
@@ -25,6 +25,7 @@ const RoomActions = () => {
   const videoToggle = (e) => {
     e.stopPropagation();
     localMediaStream.getVideoTracks()[0].enabled = !localMediaStream.getVideoTracks()[0].enabled;
+    updateUserData("videoEnabled", !videoEnabled);
     setVideoEnabled(!videoEnabled);
   }
 

@@ -70,3 +70,12 @@
 	line-height: 2rem;
 	box-sizing: border-box;
 }
+
+.videoAvatarImg {
+	z-index: 1;
+	visibility: hidden;
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	transform: translate(-50%, -50%);
+}

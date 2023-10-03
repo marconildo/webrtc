@@ -1,6 +1,5 @@
 import IO from 'socket.io-client';
 import promise from './socket.io-promise';
-import Chromatism from 'chromatism';
 
 const ICE_SERVERS = [
 	{ urls: "stun:stun.l.google.com:19302" },
@@ -11,6 +10,7 @@ const USE_VIDEO = true;
 
 // const gapBetweenTiles = 5;
 let peerId = null;
+let currentName = null;
 let signalingSocket = null; /* our socket.io connection to our webserver */
 let localMediaStream = null; /* our own microphone / webcam */
 let peers = {}; /* keep track of our peer connections, indexed by peer_id (aka socket.io id) */
@@ -66,21 +66,17 @@ const generateInitials = (
   return initials;
 }
 
-const drawCircle = (text, size, color) => {
+const drawCircle = (text, size = 150) => {
   var textSize = Math.ceil(size / 2.5);
   var font = 'Proxima Nova, proxima-nova, HelveticaNeue-Light, Helvetica Neue Light, Helvetica Neue, Helvetica, Arial, Lucida Grande, sans-serif';
-  var colors = ["#1abc9c", "#16a085", "#f1c40f", "#f39c12", "#2ecc71", "#27ae60", "#e67e22", "#d35400", "#3498db", "#2980b9", "#e74c3c", "#c0392b", "#9b59b6", "#8e44ad", "#bdc3c7", "#34495e", "#2c3e50", "#95a5a6", "#7f8c8d", "#ec87bf", "#d870ad", "#f69785", "#9ba37e", "#b49255", "#b49255", "#a94136"];
-  var colorIndex = Math.floor((text.charCodeAt(0) - 65) % colors.length);
-	var finalColor = color || colors[colorIndex];
-
-	// const size = options.size || 128
-  // const background = options.background || '#'+Math.floor(Math.random()*16777215).toString(16)
-  // const { hex: foreground } = Chromatism.contrastRatio(background)
+	var colors = ["#1abc9c", "#16a085", "#f1c40f", "#f39c12", "#2ecc71", "#27ae60", "#e67e22", "#d35400", "#3498db", "#2980b9", "#e74c3c", "#c0392b", "#9b59b6", "#8e44ad", "#bdc3c7", "#34495e", "#2c3e50", "#95a5a6", "#7f8c8d", "#ec87bf", "#d870ad", "#f69785", "#9ba37e", "#b49255", "#b49255", "#a94136"];
+	var colorIndex = Math.floor((text.charCodeAt(0) - 65) % colors.length);
+	const background = colors[colorIndex];
   
   var template = [
     '<svg height="' + size + '" width="' + size + '">',
-    '<circle fill="' + finalColor +'" width="' + size + '" height="' + size + '" cx="' + size / 2 + '" cy="' + size / 2 + '" r="' + size /2 + '"/>',
-  	'<text text-anchor="middle" x="50%" y="50%" dy="0.35em" fill="white" font-size="' + textSize + '" font-family="' + font + '">' + generateInitials(text) + '</text>',
+    '<circle fill="' + background +'" width="' + size + '" height="' + size + '" cx="' + size / 2 + '" cy="' + size / 2 + '" r="' + size /2 + '"/>',
+		'<text text-anchor="middle" x="50%" y="50%" dy="0.35em" fill="white" font-size="' + textSize + '" font-family="' + font + '">' + generateInitials(text) + '</text>',
     '</svg>'
   ];
   
@@ -89,7 +85,7 @@ const drawCircle = (text, size, color) => {
 
 const attachMediaStream = (element, stream) => (element.srcObject = stream);
 
-const getVideoElement = (name, isLocal) => {
+const getVideoElement = (id, name, isLocal) => {
 	const videoWrap = document.createElement("div");
 	videoWrap.className = "video";
 	const media = document.createElement("video");
@@ -105,11 +101,11 @@ const getVideoElement = (name, isLocal) => {
 		media.mediaGroup = "remotevideo";
 	}
 	const audioEnabled = document.createElement("i");
-	audioEnabled.setAttribute("id", peerId + "_audioEnabled");
+	audioEnabled.setAttribute("id", id + "_audioEnabled");
 	audioEnabled.className = "audioEnabled icon-mic";
 
 	const peerNameEle = document.createElement("div");
-	peerNameEle.setAttribute("id", peerId + "_videoPeerName");
+	peerNameEle.setAttribute("id", id + "_videoPeerName");
 	peerNameEle.className = "videoPeerName";
 	if (isLocal) {
 		peerNameEle.innerHTML = `${name ?? ""} (you)`;
@@ -118,11 +114,15 @@ const getVideoElement = (name, isLocal) => {
 	}
 
 	const videoAvatarImg = document.createElement("div");
+	videoAvatarImg.setAttribute("id", id + "_videoEnabled");
+	videoAvatarImg.innerHTML = drawCircle(name ?? ""),
+	videoAvatarImg.className = "videoAvatarImg";
 
-	videoWrap.setAttribute("id", peerId);
+	videoWrap.setAttribute("id", id);
 	videoWrap.appendChild(media);
 	videoWrap.appendChild(audioEnabled);
 	videoWrap.appendChild(peerNameEle);
+	videoWrap.appendChild(videoAvatarImg);
 	document.getElementById("videos").appendChild(videoWrap);
 	return media;
 }
@@ -137,7 +137,7 @@ const setupLocalMedia = (name, callback, errorback) => {
 		.getUserMedia({ audio: USE_AUDIO, video: USE_VIDEO })
 		.then((stream) => {
 			localMediaStream = stream;
-			const localMedia = getVideoElement(name, true);
+			const localMedia = getVideoElement(peerId, name, true);
 			attachMediaStream(localMedia, stream);
 			resizeVideos();
 			if (callback) callback();
@@ -161,7 +161,33 @@ const resizeVideos = () => {
   // });
 }
 
+const handleIncomingDataChannelMessage = (dataMessage) => {
+	switch (dataMessage.type) {
+		// case "chat":
+		// 	this.showChat = true;
+		// 	this.hideToolbar = false;
+		// 	this.chats.push(dataMessage);
+		// 	this.$nextTick(this.scrollToBottom);
+		// 	break;
+		case "audioEnabled":
+			document.getElementById(dataMessage.id + "_audioEnabled").className =
+				"audioEnabled icon-mic" + (dataMessage.message ? "" : "-off");
+			break;
+		case "videoEnabled":
+			document.getElementById(dataMessage.id + "_videoEnabled").style.visibility = dataMessage.message
+				? "hidden"
+				: "visible";
+			break;
+		// case "peerName":
+		// 	document.getElementById(dataMessage.id + "_videoPeerName").innerHTML = dataMessage.message;
+		// 	break;
+		default:
+			break;
+	}
+}
+
 const initiateCall = (name, roomId) => {
+	currentName = name;
   const userAgent = navigator.userAgent;
 	const isMobileDevice = !!/Android|webOS|iPhone|iPad|iPod|BB10|BlackBerry|IEMobile|Opera Mini|Mobile|mobile/i.test(
 		userAgent.toUpperCase() || ""
@@ -246,21 +272,24 @@ const initiateCall = (name, roomId) => {
 			attachMediaStream(remoteMedia, event.stream);
 			resizeVideos();
 
-			for (let peerId in channel) {
-				const videoPeerName = document.getElementById(peerId + "_videoPeerName");
-				const peerName = channel[peerId]["userData"]["peerName"];
+			for (let peer in channel) {
+				const videoPeerName = document.getElementById(peer + "_videoPeerName");
+				const peerName = channel[peer]["userData"]["peerName"];
+				console.log("peerName", peer + peerName)
+				console.log("videoEnabled", channel[peer]["userData"]["videoEnabled"])
 				if (videoPeerName && peerName) {
 					videoPeerName.innerHTML = peerName;
 				}
 
-			// 	const videoAvatarImg = document.getElementById(peerId + "_videoEnabled");
-			// 	const videoEnabled = channel[peerId]["userData"]["videoEnabled"];
-			// 	if (videoAvatarImg && !videoEnabled) {
-			// 		videoAvatarImg.style.visibility = "visible";
-			// 	}
+				const videoAvatarImg = document.getElementById(peer + "_videoEnabled");
+				videoAvatarImg.innerHTML = drawCircle(peerName ?? "");
+				const videoEnabled = channel[peer]["userData"]["videoEnabled"];
+				if (videoAvatarImg && !videoEnabled) {
+					videoAvatarImg.style.visibility = "visible";
+				}
 
-				const audioEnabledEl = document.getElementById(peerId + "_audioEnabled");
-				const audioEnabled = channel[peerId]["userData"]["audioEnabled"];
+				const audioEnabledEl = document.getElementById(peer + "_audioEnabled");
+				const audioEnabled = channel[peer]["userData"]["audioEnabled"];
 				if (audioEnabledEl) {
 					audioEnabledEl.className = "audioEnabled icon-mic" + (audioEnabled ? "" : "-off");
 				}
@@ -274,7 +303,7 @@ const initiateCall = (name, roomId) => {
 				try {
 					dataMessage = JSON.parse(msg.data);
 					console.log("dataMessage", dataMessage)
-					//App.handleIncomingDataChannelMessage(dataMessage);
+					handleIncomingDataChannelMessage(dataMessage);
 				} catch (err) {
 					console.log(err);
 				}
@@ -369,5 +398,7 @@ const initiateCall = (name, roomId) => {
 export {
   initiateCall,
 	localMediaStream,
-	peerId
+	peerId,
+	currentName,
+	dataChannels
 }
