@@ -9,15 +9,16 @@ const ICE_SERVERS = [
 const USE_AUDIO = true;
 const USE_VIDEO = true;
 
-// const gapBetweenTiles = 5;
 let peerId = null;
+let roomId = null;
 let currentName = null;
 let currentRoomId = null;
-let signalingSocket = null; /* our socket.io connection to our webserver */
-let localMediaStream = null; /* our own microphone / webcam */
-let peers = {}; /* keep track of our peer connections, indexed by peer_id (aka socket.io id) */
-let channel = {}; /* keep track of the peers Info in the channel, indexed by peer_id (aka socket.io id) */
-let peerMediaElements = {}; /* keep track of our <video>/<audio> tags, indexed by peer_id */
+let signalingSocket = null;
+let localMediaStream = null;
+let peers = {};
+let channel = {};
+let userData = {};
+let peerMediaElements = {};
 let dataChannels = {};
 
 const generateInitials = (
@@ -68,12 +69,12 @@ const generateInitials = (
   return initials;
 }
 
-const drawCircle = (text, size = 150) => {
+const drawCircle = (text, size = 120) => {
   var textSize = Math.ceil(size / 2.5);
   var font = 'Proxima Nova, proxima-nova, HelveticaNeue-Light, Helvetica Neue Light, Helvetica Neue, Helvetica, Arial, Lucida Grande, sans-serif';
 	var colors = ["#1abc9c", "#16a085", "#f1c40f", "#f39c12", "#2ecc71", "#27ae60", "#e67e22", "#d35400", "#3498db", "#2980b9", "#e74c3c", "#c0392b", "#9b59b6", "#8e44ad", "#bdc3c7", "#34495e", "#2c3e50", "#95a5a6", "#7f8c8d", "#ec87bf", "#d870ad", "#f69785", "#9ba37e", "#b49255", "#b49255", "#a94136"];
-	var colorIndex = Math.floor((text.charCodeAt(0) - 65) % colors.length);
-	const background = colors[colorIndex];
+	var colorIndex = Math.floor(Math.random() * (colors.length - 0 + 1)) + 0;
+	const background = colors[colorIndex] ?? colors[0];
   
   var template = [
     '<svg height="' + size + '" width="' + size + '">',
@@ -157,10 +158,11 @@ const joinChatChannel = (channel, userData) => {
 
 const updateUserDataChannel = (dataMessage) => {
 	if (dataMessage.type === "chat") return;
+	userData[dataMessage.type] = dataMessage.message;
 	signalingSocket.emit("updateUserData", { 
 		channel: currentRoomId,
-		key: dataMessage.type, 
-		value: dataMessage.message 
+		key: dataMessage.type,
+		value: dataMessage.message
 	});
   Object.keys(dataChannels).map((peer_id) => dataChannels[peer_id].send(JSON.stringify(dataMessage)));
 }
@@ -182,6 +184,13 @@ const handleIncomingDataChannelMessage = (dataMessage) => {
 				? "hidden"
 				: "visible";
 			break;
+		case "screenShareEnabled":
+			if (dataMessage.message) {
+				shareScreen();
+			} else {
+				stopShareScreen();
+			}
+			break;
 		// case "peerName":
 		// 	document.getElementById(dataMessage.id + "_videoPeerName").innerHTML = dataMessage.message;
 		// 	break;
@@ -190,9 +199,57 @@ const handleIncomingDataChannelMessage = (dataMessage) => {
 	}
 }
 
-const initiateCall = (name, roomId) => {
+const endCall = () => {
+	signalingSocket.close();
+	for (let peer_id in peers) {
+		peers[peer_id].close();
+	}
+};
+
+const stopShareScreen = () => {
+	let screens = document.querySelector('.screen');
+  const confContainer = document.getElementById("conference");
+  if (screens) {
+    confContainer.removeChild(screens);
+  }
+	resizeVideos();
+}
+
+const shareScreen = (currentStream) => {
+	stopShareScreen();
+  const confContainer = document.getElementById("conference");
+
+	const screen = document.createElement('div');
+	screen.classList.add('screen');
+
+	const video = document.createElement('video');
+	video.muted = true;
+	video.playsinline = true;
+	video.autoplay = true;
+	video.controls = false;
+	video.classList.add('video');
+
+	screen.appendChild(video);
+	confContainer.prepend(screen);
+
+  resizeVideos();
+	//for (let peer_id in peers) {
+	// 	const sender = peers[peer_id].getSenders().find((s) => (s.track ? s.track.kind === "video" : false));
+	// 	sender.replaceTrack(currentStream.getVideoTracks()[0]);
+	//}
+
+	// if(currentStream) {
+	// }
+}
+
+const getUserData = () => {
+	return userData;
+}
+
+const initiateCall = (name, room) => {
 	currentName = name;
-	currentRoomId = roomId;
+	currentRoomId = room;
+	roomId = room
   const userAgent = navigator.userAgent;
 	const isMobileDevice = !!/Android|webOS|iPhone|iPad|iPod|BB10|BlackBerry|IEMobile|Opera Mini|Mobile|mobile/i.test(
 		userAgent.toUpperCase() || ""
@@ -213,10 +270,11 @@ const initiateCall = (name, roomId) => {
 		console.log("peerId: " + peerId);
 		if(!peerId) return;
 
-		const userData = {
+		userData = {
 			peerName: name,
 			videoEnabled: true,
 			audioEnabled: true,
+			screenShareEnabled: false,
 			userAgent: userAgent,
 			isMobileDevice: isMobileDevice,
 			isTablet: isTablet,
@@ -245,8 +303,6 @@ const initiateCall = (name, roomId) => {
 	});
 
 	signalingSocket.on("addPeer", function (config) {
-		//console.log("addPeer", config);
-
 		const peer_id = config.peer_id;
 		if (peer_id in peers) return;
 
@@ -270,7 +326,7 @@ const initiateCall = (name, roomId) => {
 
 		peerConnection.onaddstream = function (event) {
 			if (!channel[peer_id]["userData"]["userAgent"]) return;
-			//console.log("onaddstream", event);
+			console.log("onaddstream", event);
 
 			const remoteMedia = getVideoElement(peer_id);
 			peerMediaElements[peer_id] = remoteMedia;
@@ -278,9 +334,9 @@ const initiateCall = (name, roomId) => {
 			resizeVideos();
 
 			for (let peer in channel) {
+				if(peer == peerId || channel[peer]["userData"]["isScreenShare"]) continue;
 				const videoPeerName = document.getElementById(peer + "_videoPeerName");
 				const peerName = channel[peer]["userData"]["peerName"];
-				console.log("videoEnabled", channel[peer]["userData"]["videoEnabled"])
 				if (videoPeerName && peerName) {
 					videoPeerName.innerHTML = peerName;
 				}
@@ -296,6 +352,11 @@ const initiateCall = (name, roomId) => {
 				const audioEnabled = channel[peer]["userData"]["audioEnabled"];
 				if (audioEnabledEl) {
 					audioEnabledEl.className = "audioEnabled icon-mic" + (audioEnabled ? "" : "-off");
+				}
+
+				const screenShareEnabled = channel[peer]["userData"]["screenShareEnabled"];
+				if (screenShareEnabled) {
+					shareScreen()
 				}
 			}
 		};
@@ -316,7 +377,8 @@ const initiateCall = (name, roomId) => {
 
 		/* Add our local stream */
 		peerConnection.addStream(localMediaStream);
-		dataChannels[peer_id] = peerConnection.createDataChannel("talk__data_channel");
+		if(!channel[peer_id]["userData"]["isScreenShare"])
+			dataChannels[peer_id] = peerConnection.createDataChannel("talk__data_channel");
 
 		if (config.should_create_offer) {
 			peerConnection.onnegotiationneeded = () => {
@@ -401,7 +463,11 @@ const initiateCall = (name, roomId) => {
 
 export {
   initiateCall,
+	getUserData,
+	endCall,
 	updateUserDataChannel,
+	shareScreen,
+	stopShareScreen,
 	currentName,
 	localMediaStream,
 	peerId

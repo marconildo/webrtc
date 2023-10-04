@@ -1,17 +1,16 @@
 import { useContext } from "react";
 import "./RoomActions.css";
 import RoomContext from "../context/RoomContext";
-import {
-  localMediaStream
-} from "../utils/webrtc"
-import {
-  updateUserData
-} from "../utils/actions"
+import { localMediaStream, endCall } from "../utils/webrtc"
+import { updateUserData } from "../utils/actions"
+import { useNavigate } from "react-router-dom";
 
 const RoomActions = () => {
+  const navigate = useNavigate();
   const { 
     audioEnabled, setAudioEnabled,
     videoEnabled, setVideoEnabled,
+    screenShareEnabled, setScreenShareEnabled
     // showChat, setShowChat
   } = useContext(RoomContext);
 
@@ -29,7 +28,19 @@ const RoomActions = () => {
     setVideoEnabled(!videoEnabled);
   }
 
-  return <div id="actionsWrap">
+  const screenShareToggle = (e) => { 
+    e.stopPropagation();
+    updateUserData("screenShareEnabled", !screenShareEnabled, setScreenShareEnabled);
+    setScreenShareEnabled(!screenShareEnabled);
+  }
+
+  const exit = () => {
+    endCall();
+    window.sessionStorage.clear();
+    navigate("/");
+  }
+
+  return <div id="controls">
     <div id="actions">
       <button 
         className={`icon-mic${audioEnabled ? "" : "-off"}`}
@@ -38,8 +49,10 @@ const RoomActions = () => {
         className={`icon-video${videoEnabled ? "" : "-off"}`} 
         onClick={(e) => videoToggle(e)}  />
       <button className={`icon-message-square`} />
-      <button className={`icon-monitor`} />
-      <button className="icon-exit" />
+      <button 
+        className={`icon-monitor`}
+        onClick={(e) => screenShareToggle(e)}/>
+      <button className="icon-exit" onClick={() => exit()} />
       <button className={`icon-more-horizontal`} />
     </div>
   </div>

@@ -16,6 +16,7 @@ const Room = () => {
   });
   const [audioEnabled, setAudioEnabled] = useState(true);
   const [videoEnabled, setVideoEnabled] = useState(true);
+  const [screenShareEnabled, setScreenShareEnabled] = useState(false);
   const [showChat, setShowChat] = useState(false);
   const [callInitiated, setCallInitiated] = useState(false);
 
@@ -36,9 +37,14 @@ const Room = () => {
       audioEnabled, setAudioEnabled,
       videoEnabled, setVideoEnabled,
       showChat, setShowChat,
+      screenShareEnabled, setScreenShareEnabled
     }}>
-    <section id="videos" />
-    <RoomActions />
+    <div id="room">
+      <div id="conference">
+        <div id="videos" />
+      </div>
+      <RoomActions />
+    </div>    
   </RoomContext.Provider>;
 }
 

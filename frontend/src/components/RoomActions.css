@@ -1,4 +1,4 @@
-#actionsWrap {
+#controls {
 	position: fixed;
 	bottom: 1rem;
 	left: 0px;
@@ -9,7 +9,7 @@
 	opacity: 1;
 	transform: translateY(0rem);
 }
-#actionsWrap.hidden {
+#controls.hidden {
 	opacity: 0;
 	transform: translateY(1rem);
 	z-index: -1;

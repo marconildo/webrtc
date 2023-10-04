@@ -1,7 +1,7 @@
 // let customRatio = true;
 let ratios = ['4:3', '16:9', '1:1', '1:2'];
 let aspect = 0;
-const margin = 10;
+const margin = 0;
 let ratio = getAspectRatio();
 
 function getAspectRatio() {
@@ -43,19 +43,23 @@ const resizeVideos = () => {
 	let height = videoMediaContainer.offsetHeight - (margin * 2);
   const videos = document.querySelectorAll("#videos .video"); 
 
-   let max = 0
-   let i = 1
-   while (i < 5000) {
-       let area = calcArea(i, videos, width, height);
-       if (area === false) {
-           max = i - 1;
-           break;
-       }
-       i++;
-   }
+  let max = 0
+  let i = 1
+  while (i < 5000) {
+    let area = calcArea(i, videos, width, height);
+    if (area === false) {
+      max = i - 1;
+      break;
+    }
+    i++;
+  }
 
-   max = max - (margin * 2);
-   setWidth(videos, max)
+  max = max - (margin * 2);
+  setWidth(videos, max);
+
+  window.addEventListener("resize", function () {
+    resizeVideos();
+  });
 }
 
 export {
