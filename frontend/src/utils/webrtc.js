@@ -224,21 +224,27 @@ const shareScreen = (currentStream) => {
 
 	const video = document.createElement('video');
 	video.muted = true;
-	video.playsinline = true;
+	video.setAttribute("playsinline", true);
 	video.autoplay = true;
+	video.muted = true;
+	video.volume = 0;
 	video.controls = false;
 	video.classList.add('video');
+
+	currentStream.getVideoTracks()[0].enabled = true;
+	const newStream = new MediaStream([currentStream.getVideoTracks()[0], localMediaStream.getAudioTracks()[0]]);
+	video.srcObject = newStream;
 
 	screen.appendChild(video);
 	confContainer.prepend(screen);
 
   resizeVideos();
-	//for (let peer_id in peers) {
-	// 	const sender = peers[peer_id].getSenders().find((s) => (s.track ? s.track.kind === "video" : false));
-	// 	sender.replaceTrack(currentStream.getVideoTracks()[0]);
-	//}
 
 	// if(currentStream) {
+	// 	for (let peer_id in peers) {
+	// 		const sender = peers[peer_id].getSenders().find((s) => (s.track ? s.track.kind === "video" : false));
+	// 		sender.replaceTrack(currentStream.getVideoTracks()[0]);
+	// 	}
 	// }
 }
 
@@ -326,7 +332,9 @@ const initiateCall = (name, room) => {
 
 		peerConnection.onaddstream = function (event) {
 			if (!channel[peer_id]["userData"]["userAgent"]) return;
-			console.log("onaddstream", event);
+			console.log("onaddstream:", event);
+			console.log("origen:", peer_id);
+			console.log("meu peer:", peerId);
 
 			const remoteMedia = getVideoElement(peer_id);
 			peerMediaElements[peer_id] = remoteMedia;
@@ -377,8 +385,7 @@ const initiateCall = (name, room) => {
 
 		/* Add our local stream */
 		peerConnection.addStream(localMediaStream);
-		if(!channel[peer_id]["userData"]["isScreenShare"])
-			dataChannels[peer_id] = peerConnection.createDataChannel("talk__data_channel");
+		dataChannels[peer_id] = peerConnection.createDataChannel("talk__data_channel");
 
 		if (config.should_create_offer) {
 			peerConnection.onnegotiationneeded = () => {
