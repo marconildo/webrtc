@@ -33,9 +33,9 @@ const setShareScreen = (screenShareEnabled, callback) => {
 
   if (screenShareEnabled) {
     if (navigator.getDisplayMedia) {
-      screenMediaPromise = navigator.getDisplayMedia({ video: true });
+      screenMediaPromise = navigator.getDisplayMedia({ video: true, audio: false });
     } else if (navigator.mediaDevices.getDisplayMedia) {
-      screenMediaPromise = navigator.mediaDevices.getDisplayMedia({ video: true });
+      screenMediaPromise = navigator.mediaDevices.getDisplayMedia({ video: true, audio: false });
     } else {
       screenMediaPromise = navigator.mediaDevices.getUserMedia({
         video: { mediaSource: "screen" },
